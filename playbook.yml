@@ -46,6 +46,7 @@
         - openjdk-8-jdk
         - openjdk-8-jre
         - maven
+        - gradle
         - vim
         - mysql-server
         - python-mysqldb
@@ -79,9 +80,35 @@
     - name: set java to java 8
       shell: update-java-alternatives --set /usr/lib/jvm/java-1.8.0-openjdk-amd64
 
+    #Installing Docker
+    - name: ensure repository key is installed
+      apt_key:
+        id: "58118E89F3A912897C070ADBF76221572C52609D"
+        keyserver: "hkp://p80.pool.sks-keyservers.net:80"
+        state: present
+
+    - name: ensure docker registry is available
+      # For Ubuntu 14.04 LTS, use this repository:
+      # apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
+      # For Ubuntu 16.04 LTS, use this repo instead:
+      apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-xenial main' state=present
+
+    - name: ensure docker and dependencies are installed
+      apt: name=docker-engine update_cache=yes
+
+    # Uncomment the following to enable insecure registries with Docker
+    #- name: ensure docker can use insecure registries in 10.11.0.0/16
+    #  lineinfile: "dest=/etc/default/docker regexp=^DOCKER_OPTS line=DOCKER_OPTS='--insecure-registry 10.11.0.0/16'"
+
+    - service: name=docker state=restarted
+
+    - name: Add vagrant as docker user
+      shell: usermod -aG docker {{ user }}
+      become: True
+
     #Download and install IDEAs
     - name: download IntelliJ from centerdevice
-      get_url: url=https://public.centerdevice.de/download/8adbcadf-a6e1-4fce-b2a3-f4748cb5d234.8a1681b0-578b-46d1-8efd-8a35fbb6db80 dest=/opt/intellij.tar.gz validate_certs=no
+      get_url: url=https://download.jetbrains.com/idea/ideaIU-2017.3.5-no-jdk.tar.gz dest=/opt/intellij.tar.gz validate_certs=no
     
     - name: download Eclipse from centerdevice
       get_url: url=https://public.centerdevice.de/download/51c5bc60-8cd5-484b-bf08-ba07345661f5.4665a281-3da0-4cdd-b618-2c9db6ca3b9f dest=/opt/eclipse.tar.gz validate_certs=no

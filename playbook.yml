@@ -7,6 +7,8 @@
     zsh_theme: steeef
     worblehat_db: worblehat_test
     worblehat_user: worblehat
+    docker_compose_version: 1.21.2
+    docker_compose_bin: /usr/local/bin/docker-compose
 
   tasks:
     # Adding google chrome 
@@ -36,7 +38,7 @@
         state=present
 
     #Adding additional requirements
-    - name: install zsh, git, curl, openjdk-8-jre, maven, vim, mysql-server, python-mysqldb
+    - name: install zsh, git, curl, openjdk-8-jre, maven, vim, mysql-server, python-mysqldb, xterm
       apt:
         name={{ item }}
         update_cache=yes
@@ -50,6 +52,7 @@
         - vim
         - mysql-server
         - python-mysqldb
+        - xterm
 
     #Shell beautification
     - name: Clone oh-my-zsh repo
@@ -105,6 +108,14 @@
     - name: Add vagrant as docker user
       shell: usermod -aG docker {{ user }}
       become: True
+
+    - name: install docker-compose
+      become: True
+      get_url:
+        url: 'https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}'
+        dest: '{{ docker_compose_bin }}'
+        force: true
+        mode: '555'
 
     #Download and install IDEAs
     - name: download IntelliJ from centerdevice

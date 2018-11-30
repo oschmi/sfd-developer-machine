@@ -1,6 +1,6 @@
 ---
 - hosts: all
-  sudo: True
+
   vars:
     apt_file: /etc/apt/sources.list.d/google-chrome.list
     user: vagrant
@@ -13,52 +13,91 @@
   tasks:
     # Adding google chrome 
     - name: Does the Google apt file exist?
+      become: True
       command: test -f {{ apt_file }}
       register: google_apt_exists
       ignore_errors: True
 
     - name: Add Google Chrome key
+      become: True
       shell: wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
       when: google_apt_exists.rc == 1
 
     - name: Add Google Chrome repo
+      become: True
       shell: echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list
       when: google_apt_exists.rc == 1
 
     - name: Update apt cache
+      become: True
       apt: update_cache=yes
       when: google_apt_exists.rc == 1
 
     - name: Install Google Chrome
-      apt: pkg=google-chrome-stable state=installed
+      become: True
+      apt: pkg=google-chrome-stable state=present
 
     - name: add openjdk repo to enable download of openjdk-8
+      become: True
       apt_repository:
         repo=ppa:openjdk-r/ppa
         state=present
+    
+    - name: add intellj repo
+      become: True
+      apt_repository:
+        repo=ppa:mmk2410/intellij-idea
+        state=present
+
+    #Configuring java
+    - name: Install add-apt-repostory
+      become: yes
+      apt: name=software-properties-common state=latest
+
+    - name: Add Oracle Java Repository
+      become: yes
+      apt_repository: repo='ppa:webupd8team/java'
+
+    - name: Accept Java 8 License
+      become: yes
+      debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+
+    - name: Install Oracle Java 8
+      become: yes
+      apt: 
+        name: [oracle-java8-installer, ca-certificates, oracle-java8-set-default]
+        state: latest
 
     #Adding additional requirements
-    - name: install zsh, git, curl, openjdk-8-jre, maven, vim, mysql-server, python-mysqldb, xterm
+    - name: install zsh, git, curl, maven, vim, mysql-server, python-mysqldb, xterm
+      become: True
       apt:
-        name={{ item }}
-        update_cache=yes
-      with_items:
-        - zsh
-        - git
-        - openjdk-8-jdk
-        - openjdk-8-jre
-        - maven
-        - gradle
-        - vim
-        - mysql-server
-        - python-mysqldb
-        - xterm
+        name : [zsh, git, maven, gradle, vim, mysql-server, python-mysqldb, xterm, intellij-idea-community, language-pack-de]
+        #ubuntu-gnome-desktop]
+        update_cache: yes
+    
+    - name: install German language
+      become: true
+      apt:
+        name: [wngerman, wswiss, gnome-user-docs-de, libreoffice-l10n-de, hunspell-de-ch-frami, language-pack-gnome-de, hunspell-de-de-frami, mythes-de-ch, wogerman,
+                hyphen-de, firefox-locale-de, hunspell-de-at-frami, thunderbird-locale-de, mythes-de ,libreoffice-help-de, gnome-getting-started-docs-de]
+    
+    - name: Ensure a locale exists
+      locale_gen:
+        name: de_DE.UTF-8
+        state: present
+
 
     #Shell beautification
     - name: Clone oh-my-zsh repo
-      git: repo=https://github.com/robbyrussell/oh-my-zsh.git dest=/home/{{ user }}/.oh-my-zsh
+      become: True
+      git: 
+        repo: https://github.com/robbyrussell/oh-my-zsh.git 
+        dest: /home/{{ user }}/.oh-my-zsh
+        clone: yes
 
     - name: Set zsh as default shell
+      become: True
       user: name={{ user }} shell=/bin/zsh
 
     - name: Create conf folder in home directory
@@ -73,122 +112,93 @@
     - name: symlink zshrc
       file: path=/home/{{ user }}/.zshrc src=/home/{{ user }}/conf/zshrc state=link owner={{ user }}
 
-    #Configuring java
-    - name: set global path to java 8 in /etc/profile
-      lineinfile:
-        dest=/etc/profile
-        line="export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64"
-        state=present
 
-    - name: set java to java 8
-      shell: update-java-alternatives --set /usr/lib/jvm/java-1.8.0-openjdk-amd64
+    
+    #      - name: set global path to java 8 in /etc/profile
+    #  lineinfile:
+    #    dest=/etc/profile
+    #    line="export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64"
+    #    state=present
 
-    #Installing Docker
-    - name: ensure repository key is installed
-      apt_key:
-        id: "58118E89F3A912897C070ADBF76221572C52609D"
-        keyserver: "hkp://p80.pool.sks-keyservers.net:80"
+    #- name: set java to java 8
+    #  become: True
+    #  shell: update-java-alternatives --set /usr/lib/jvm/java-1.8.0-openjdk-amd64
+
+    - name: Add Docker GPG key
+      become: True
+      apt_key: 
+        url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    - name: ensure docker registry is available
-      # For Ubuntu 14.04 LTS, use this repository:
-      # apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
-      # For Ubuntu 16.04 LTS, use this repo instead:
-      apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-xenial main' state=present
+    - name: Add Docker APT repository
+      become: True
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable
 
-    - name: ensure docker and dependencies are installed
-      apt: name=docker-engine update_cache=yes
+    - name: Install list of packages
+      become: True
+      apt:
+        name: ['apt-transport-https','ca-certificates','curl','software-properties-common','docker-ce']
+        state: present
+        update_cache: yes
 
-    # Uncomment the following to enable insecure registries with Docker
-    #- name: ensure docker can use insecure registries in 10.11.0.0/16
-    #  lineinfile: "dest=/etc/default/docker regexp=^DOCKER_OPTS line=DOCKER_OPTS='--insecure-registry 10.11.0.0/16'"
-
-    - service: name=docker state=restarted
+    - name: Ensure docker deamon is running
+      become: True
+      service:
+        name: docker
+        state: started
+      become: true
 
     - name: Add vagrant as docker user
       shell: usermod -aG docker {{ user }}
       become: True
 
-    - name: install docker-compose
+    - name: Install docker-compose
       become: True
-      get_url:
-        url: 'https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}'
-        dest: '{{ docker_compose_bin }}'
-        force: true
-        mode: '555'
-
-    #Download and install IDEAs
-    - name: download IntelliJ from centerdevice
-      get_url: url=https://download.jetbrains.com/idea/ideaIU-2017.3.5-no-jdk.tar.gz dest=/opt/intellij.tar.gz validate_certs=no
-    
-    - name: download Eclipse from centerdevice
-      get_url: url=https://public.centerdevice.de/download/51c5bc60-8cd5-484b-bf08-ba07345661f5.4665a281-3da0-4cdd-b618-2c9db6ca3b9f dest=/opt/eclipse.tar.gz validate_certs=no
-    
-    - name: create directory for IntelliJ and Eclipse
-      file: path={{ item }} state=directory
-      with_items:
-        - /opt/IntelliJ
-        - /opt/Eclipse
-    
-    - name: unpack IntelliJ
-      unarchive:
-        src=/opt/intellij.tar.gz
-        dest=/opt/IntelliJ
-    
-    - name: unpack Eclipse
-      unarchive:
-        src=/opt/eclipse.tar.gz
-        dest=/opt/Eclipse
-    
-    - name: Create Desktop directory, if not existant
-      file:
-        path=/home/vagrant/Desktop
-        state=directory
-        mode=0755
-        owner=vagrant
-
-    - name: create Desktop files for IntelliJ and Eclipse
-      template:
-        src=files/{{ item }}.desktop
-        dest=/home/vagrant/Desktop/{{ item }}.desktop owner=vagrant
-      with_items:
-        - sts
-        - jetbrains-idea-ce
-    
-    - name: create IntelliJ folder
-      file:
-        path=/home/vagrant/IdeaProjects
-        state=directory
-        mode=0755
-        owner=vagrant
-    
+      apt:
+        name: docker-compose
+        state: present
+        update_cache: yes
+   
     #Create Database for worblehat
-    - name: create empty Worblehat database
-      mysql_db:
-        name={{ worblehat_db }}
-        state=present
+    # - name: 3. Set MySQL root password before installing
+    #   become: True
+    #   debconf: name='mysql-server' question='mysql-server/root_password' value='wordpass'
+    #   debconf: name='mysql-server' question='mysql-server/root_password_again' value='wordpass' vtype='password'
 
-    - name: create Worblehat database user
-      mysql_user:
-        name={{ worblehat_user }}
-        password={{ worblehat_user }}
-        state=present
-        priv={{ worblehat_db }}.*:ALL
+    
+    # - name: create empty Worblehat database
+    #   become: True
+    #   mysql_db:
+    #     login_user: 'root'
+    #     login_password: 'wordpass'
+    #     name: "{{ worblehat_db }}"
+    #     state: present
+
+    # - name: create Worblehat database user
+    #   mysql_user:
+    #     name={{ worblehat_user }}
+    #     password={{ worblehat_user }}
+    #     state=present
+    #     priv={{ worblehat_db }}.*:ALL
 
     - name: Change timezone
+      become: True
       shell: timedatectl set-timezone Europe/Berlin
-            
-    # Apparently this has to happen in the end - or at least after the zsh tasks
-    #Configuring keyboard
-    - name: set german keyboard in /etc/profile
-      lineinfile:
-        dest=/etc/profile
-        line="setxkbmap de"
-        state=present
 
-    - name: switch to German keyboard layout
-      shell: |
-        setxkbmap de
-        sed -i 's/XKBLAYOUT=\"\w*"/XKBLAYOUT=\"de\"/g' /etc/default/keyboard
-        udevadm trigger --subsystem-match=input --action=change
+  roles:
+    - role: gantsign.keyboard
+      # The XKB keyboard model name.
+      keyboard_model: pc104
 
+      # The XKB keyboard layout name.
+      keyboard_layout: de
+
+      # The XKB keyboard variant components.
+      keyboard_variant: ''
+
+      # The XKB keyboard option components.
+      keyboard_options: ''
+
+      # The behavior of <BackSpace> and <Delete> keys.
+      keyboard_backspace: guess

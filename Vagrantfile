@@ -12,7 +12,8 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "janihur/ubuntu-1604-lxde-desktop"
+  config.vm.box = "peru/ubuntu-18.04-desktop-amd64"
+  config.vm.box_version = "20181101.01"
 
   config.vm.define "sfd-devbox"
 
@@ -69,10 +70,10 @@ Vagrant.configure(2) do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  config.vm.provision "shell", inline: <<-SHELL
-    sudo apt-get update -y
-    sudo apt-get install ansible -y
-    cd /vagrant
-    sudo ansible-playbook --connection=local -i "localhost," playbook.yml
-  SHELL
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "playbook.yml"
+    ansible.extra_vars = {
+      ansible_python_interpreter: "/usr/bin/python3",
+    }
+  end
 end

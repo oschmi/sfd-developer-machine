@@ -27,11 +27,25 @@
       become: True
       shell: echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list
       when: google_apt_exists.rc == 1
+    
+    - name: add microsoft gpg
+      become: True
+      shell: 
+        cmd: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+          sudo install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EB3E94ADBE1229CF
+    
+    - name: add vs code repo
+      become: true
+      shell:
+        cmd:
+          sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
+
 
     - name: Update apt cache
       become: True
       apt: update_cache=yes
-      when: google_apt_exists.rc == 1
 
     - name: Install Google Chrome
       become: True
@@ -72,8 +86,7 @@
     - name: install zsh, git, curl, maven, vim, mysql-server, python-mysqldb, xterm
       become: True
       apt:
-        name : [zsh, git, maven, gradle, vim, mysql-server, python-mysqldb, xterm, intellij-idea-community, language-pack-de]
-        #ubuntu-gnome-desktop]
+        name : [zsh, git, maven, gradle, vim, xterm, intellij-idea-community, language-pack-de, python3.6, python3-pip, mysql-server, python3-pymysql]
         update_cache: yes
     
     - name: install German language
@@ -112,18 +125,6 @@
     - name: symlink zshrc
       file: path=/home/{{ user }}/.zshrc src=/home/{{ user }}/conf/zshrc state=link owner={{ user }}
 
-
-    
-    #      - name: set global path to java 8 in /etc/profile
-    #  lineinfile:
-    #    dest=/etc/profile
-    #    line="export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64"
-    #    state=present
-
-    #- name: set java to java 8
-    #  become: True
-    #  shell: update-java-alternatives --set /usr/lib/jvm/java-1.8.0-openjdk-amd64
-
     - name: Add Docker GPG key
       become: True
       apt_key: 
@@ -141,17 +142,27 @@
         name: ['apt-transport-https','ca-certificates','curl','software-properties-common','docker-ce']
         state: present
         update_cache: yes
+    
+    - name: Install VS Code
+      become: true
+      apt: 
+        name: 'code' 
+        state: present
+        update_cache: yes
+  
+
+    - name: Adding Docker to vagrant user {{ user }}  
+      user: 
+        name: '{{ user }}'
+        groups: docker
+        append: yes
+      become: True
 
     - name: Ensure docker deamon is running
       become: True
       service:
         name: docker
         state: started
-      become: true
-
-    - name: Add vagrant as docker user
-      shell: usermod -aG docker {{ user }}
-      become: True
 
     - name: Install docker-compose
       become: True
@@ -159,28 +170,56 @@
         name: docker-compose
         state: present
         update_cache: yes
-   
-    #Create Database for worblehat
-    # - name: 3. Set MySQL root password before installing
-    #   become: True
-    #   debconf: name='mysql-server' question='mysql-server/root_password' value='wordpass'
-    #   debconf: name='mysql-server' question='mysql-server/root_password_again' value='wordpass' vtype='password'
-
     
-    # - name: create empty Worblehat database
-    #   become: True
-    #   mysql_db:
-    #     login_user: 'root'
-    #     login_password: 'wordpass'
-    #     name: "{{ worblehat_db }}"
-    #     state: present
+    - name: install pip3 components 
+      pip:
+        name: 
+          - jupyter
+          - Keras-Preprocessing>=1.0.8
+          - Keras-Applications>=1.0.7
+          - matplotlib>=1.4.3
+          - numpy>=1.16.0
+          - pandas>=0.19
+          - scipy>=0.15.1
+          - scikit-learn>=0.18
+          - tensorboard>=1.12.2
+          - tensorflow>=1.12.0
+          - seaborn
+        executable: pip3
 
-    # - name: create Worblehat database user
-    #   mysql_user:
-    #     name={{ worblehat_user }}
-    #     password={{ worblehat_user }}
-    #     state=present
-    #     priv={{ worblehat_db }}.*:ALL
+
+    - name: 3. Set MySQL root password before installing
+      become: True
+      debconf: name='mysql-server' question='mysql-server/root_password' value='wordpass'
+      debconf: name='mysql-server' question='mysql-server/root_password_again' value='wordpass' vtype='password'
+
+       
+    - name: Ensure mysql is running and starts on boot
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: create empty Worblehat database
+      become: True
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: 'root'
+        login_password: 'wordpass'
+        name: "{{ worblehat_db }}"
+        state: present
+
+    - name: create Worblehat database user
+      become: True
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: 'root'
+        login_password: 'wordpass'
+        name: '{{ worblehat_user }}'
+        password: '{{ worblehat_user }}'
+        state: 'present'
+        priv: '{{ worblehat_db }}.*:ALL,GRANT'
 
     - name: Change timezone
       become: True

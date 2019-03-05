@@ -2,6 +2,10 @@
 Vagrant/Ansible Project to set up a developer machine containing IDEA and Eclipse for the "Scrum for developers" training hold by [codecentric AG](https://www.codecentric.de).
 
 ## Setup
+### install vagrant vbox guest additions
+```vagrant plugin install vagrant-vbguest```
+
+### Afterwards
 Assuming you have [Vagrant](https://www.vagrantup.com/) already installed on your machine just checkout the repository, enter the checked out directory and run
 
 ```vagrant up```

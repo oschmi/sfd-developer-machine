@@ -51,7 +51,7 @@ Vagrant.configure(2) do |config|
   vb.gui = true
   #
   #   # Customize the amount of memory on the VM:
-  vb.memory = "8192"
+  vb.memory = "5020"
   vb.cpus = "4"
   vb.customize ['modifyvm', :id, "--clipboard", "bidirectional"]
   vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
@@ -71,6 +71,7 @@ Vagrant.configure(2) do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "ansible" do |ansible|
+    ansible.compatibility_mode = "auto"
     ansible.playbook = "playbook.yml"
     ansible.extra_vars = {
       ansible_python_interpreter: "/usr/bin/python3",

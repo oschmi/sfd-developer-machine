@@ -64,23 +64,11 @@
         state=present
 
     #Configuring java
-    - name: Install add-apt-repostory
-      become: yes
-      apt: name=software-properties-common state=latest
-
-    - name: Add Oracle Java Repository
-      become: yes
-      apt_repository: repo='ppa:webupd8team/java'
-
-    - name: Accept Java 8 License
-      become: yes
-      debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
-
-    - name: Install Oracle Java 8
-      become: yes
-      apt: 
-        name: [oracle-java8-installer, ca-certificates, oracle-java8-set-default]
-        state: latest
+    - name: installing java 8
+      become: True
+      apt:
+        name : [openjdk-8-jdk]
+        update_cache: yes
 
     #Adding additional requirements
     - name: install zsh, git, curl, maven, vim, mysql-server, python-mysqldb, xterm
@@ -93,7 +81,7 @@
       become: true
       apt:
         name: [wngerman, wswiss, gnome-user-docs-de, libreoffice-l10n-de, hunspell-de-ch-frami, language-pack-gnome-de, hunspell-de-de-frami, mythes-de-ch, wogerman,
-                hyphen-de, firefox-locale-de, hunspell-de-at-frami, thunderbird-locale-de, mythes-de ,libreoffice-help-de, gnome-getting-started-docs-de]
+                hyphen-de, firefox-locale-de, hunspell-de-at-frami, thunderbird-locale-de, mythes-de ,libreoffice-help-de, vlc]
     
     - name: Ensure a locale exists
       locale_gen:
@@ -185,6 +173,7 @@
           - tensorboard>=1.12.2
           - tensorflow>=1.12.0
           - seaborn
+          - psutil
         executable: pip3
 
 
@@ -225,19 +214,6 @@
       become: True
       shell: timedatectl set-timezone Europe/Berlin
 
-  roles:
-    - role: gantsign.keyboard
-      # The XKB keyboard model name.
-      keyboard_model: pc104
-
-      # The XKB keyboard layout name.
-      keyboard_layout: de
-
-      # The XKB keyboard variant components.
-      keyboard_variant: ''
-
-      # The XKB keyboard option components.
-      keyboard_options: ''
-
-      # The behavior of <BackSpace> and <Delete> keys.
-      keyboard_backspace: guess
+    - name: Configure available keyboard layouts in Gnome
+      become: True
+      shell: "L='de' && sudo sed -i 's/XKBLAYOUT=\"\\w*\"/XKBLAYOUT=\"'$L'\"/g' /etc/default/keyboard"

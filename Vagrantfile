@@ -12,10 +12,10 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "peru/ubuntu-18.04-desktop-amd64"
-  config.vm.box_version = "20181101.01"
+  config.vm.box = "chenhan/lubuntu-desktop-18.04"
+  # config.vm.box_version = "20200216.0.0"
 
-  config.vm.define "sfd-devbox"
+  config.vm.define "lbp-devbox"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -51,10 +51,12 @@ Vagrant.configure(2) do |config|
   vb.gui = true
   #
   #   # Customize the amount of memory on the VM:
-  vb.memory = "5020"
+  vb.memory = "4096"
   vb.cpus = "4"
+  vb.customize ["modifyvm", :id, "--vram", "128"]
   vb.customize ['modifyvm', :id, "--clipboard", "bidirectional"]
   vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+  config.vbguest.iso_path = "https://download.virtualbox.org/virtualbox/6.0.14/VBoxGuestAdditions_6.0.14.iso"
   end
   #
   # View the documentation for the provider you are using for more
